@@ -40,4 +40,58 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
+    ALU(x=DReg,y=AMRegister,zx=instruction[11],nx=instruction[10],zy=instruction[9],ny=instruction[8],f=instruction[7],no=instruction[6],out=ALUOutput,out=outM,zr=Zero,ng=Negative);
+    Mux16(a=instruction,b=ALUOutput,sel=CInsLoadRegA,out=ARegisterInput);
+    Not(in=instruction[15],out=AInsLoadRegA); //load A Register if A Instruction
+    And(a=instruction[5],b=instruction[15],out=CInsLoadRegA); //load A Register and C Instruction
+    Or(a=AInsLoadRegA,b=CInsLoadRegA,out=LoadARegister);
+    ARegister(in=ARegisterInput,load=LoadARegister,out=AReg,out[0..14]=addressM);
+    Mux16(a=AReg,b=inM,sel=instruction[12],out=AMRegister);
+    And(a=instruction[4],b=instruction[15],out=CInsLoadRegD); //load D Register and C Instruction
+    DRegister(in=ALUOutput,load=CInsLoadRegD,out=DReg);
+    And(a=instruction[3],b=instruction[15],out=writeM); //load M Register and C Instruction
+    //Jump Conditions
+    Not(in=instruction[2],out=Notj1);
+    Not(in=instruction[1],out=Notj2);
+    Not(in=instruction[0],out=Notj3);
+    Not(in=Negative,out=NotNegative);
+    Not(in=Zero,out=NotZero);
+    And(a=NotNegative,b=NotZero,out=Positive);
+    //JGT
+    And(a=Notj1,b=Notj2,out=JGT1);
+    And(a=instruction[0],b=Positive,out=JGT2);
+    And(a=JGT1,b=JGT2,out=JGT);
+    //JEQ
+    And(a=Notj1,b=instruction[1],out=JEQ1);
+    And(a=Notj3,b=Zero,out=JEQ2);
+    And(a=JEQ1,b=JEQ2,out=JEQ);
+    //JGE
+    And(a=Notj1,b=instruction[1],out=JGE1);
+    Or(a=Zero,b=Positive,out=ZeroOrPositive);
+    And(a=instruction[0],b=ZeroOrPositive,out=JGE2);
+    And(a=JGE1,b=JGE2,out=JGE);
+    //JLT
+    And(a=instruction[2],b=Notj2,out=JLT1);
+    And(a=Notj3,b=Negative,out=JLT2);
+    And(a=JLT1,b=JLT2,out=JLT);
+    //JNE
+    And(a=instruction[2],b=Notj2,out=JNE1);
+    And(a=instruction[0],b=NotZero,out=JNE2);
+    And(a=JNE1,b=JNE2,out=JNE);
+    //JLE
+    And(a=instruction[2],b=instruction[1],out=JLE1);
+    Or(a=Zero,b=Negative,out=ZeroOrNegative);
+    And(a=Notj3,b=ZeroOrNegative,out=JLE2);
+    And(a=JLE1,b=JLE2,out=JLE);
+    //JMP
+    And(a=instruction[2],b=instruction[1],out=JMP1);
+    And(a=instruction[0],b=JMP1,out=JMP);
+    //Jump
+    Or8Way(in[0]=JGT,in[1]=JEQ,in[2]=JGE,in[3]=JLT,in[4]=JNE,in[5]=JLE,in[6]=JMP,in[7]=false,out=JumpInput);
+    //If C instruction then jump
+    And(a=JumpInput,b=instruction[15],out=Jump);
+    //NoJump
+    Not(in=Jump,out=NoJump);
+    //PC
+    PC(in=AReg,load=Jump,inc=NoJump,reset=reset,out[0..14]=pc);
 }
